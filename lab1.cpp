@@ -21,11 +21,11 @@ struct point3d {
         double get_x() {return this->x;}
         double get_y() {return this->y;}
         double get_z() {return this->z;}
-}
+};
 
 class FillDots {
     private:
        double x, y, z; 
     public:
-
-}
+ 
+};
