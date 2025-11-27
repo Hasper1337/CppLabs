@@ -1,83 +1,108 @@
-﻿#include <iostream>
+﻿/*****************************************************************//**
+ * \file   lab1.cpp
+ * \brief  Лабораторная работа №1 по ООП
+ * 
+ * \author Viner Sakhibgareev
+ * \date   November 2025
+ *********************************************************************/
+
+
+#define _USE_MATH_DEFINES
+#include <iostream>
 #include <fstream>
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
+#include <random>
 
 using namespace std;
 
-// Структура
+/**
+ * \brief Структура точки в 3D пространстве.
+ */
 struct point3d
 {
     double x, y, z;
 
-    point3d(double x = 0.0, double y = 0.0, double z = 0.0)
-    {
-        this->x = x;
-        this->y = y;
-        this->z = z;
-    }
+    /**
+     * \brief Конструктор по умолчанию.
+     * 
+     * \param x Координаты в плоскости x
+     * \param y Координаты в плоскости y
+     * \param z Координаты в плоскости z
+     */
+    point3d(double x = 0.0, double y = 0.0, double z = 0.0) : x(x), y(y), z(z) {}
 
+    /**
+     * \brief Функция вывода координат точки.
+     */
     void print() const
     {
         cout << "Координаты точки: x = " << x << ", y = " << y << ", z = " << z << endl;
     }
 
-    double getBackX() const
-    {
-        return x;
-    }
+    double getBackX() const { return x; }
 
-    double getBackY() const
-    {
-        return y;
-    }
+    double getBackY() const { return y; }
 
-    double getBackZ() const
-    {
-        return z;
-    }
+    double getBackZ() const { return z; }
 };
 
-// Класс для генерации случайных точек в правой половине тора
-class TorusGenerator{
-    double R; // Большой радиус тора
-    double r; // Малый радиус тора
+/**
+ * \brief Класс для генерации случайных точек в правой половине тора.
+ */
+class TorusGenerator {
+private:
+    double R;
+    double r;
+    mt19937 gen;
+    uniform_real_distribution<double> dist;
 
 public:
-    TorusGenerator(double bigRadius = 3.0, double smallRadius = 1.0)
-    {
-        R = bigRadius;
-        r = smallRadius;
-        srand(time(0));
-    }
+    /**
+     * \brief Конструктор с параметрами тора.
+     * 
+     * \param bigRadius Большой радиус (расстояние от центра тора до центра трубки)
+     * \param smallRadius Малый радиус (радиус трубки)
+     */
+    TorusGenerator(double bigRadius = 3.0, double smallRadius = 1.0) : R(bigRadius), r(smallRadius), gen(random_device{}()), dist(0.0, 1.0) {}
 
-    // Функция для генерации случайной точки внутри правой половины тора
-    point3d rnd()
-    {
-        double x, y, z;
-        bool inside = false;
+    /**
+     * \brief Функция генерации случайной точки внутри правой половины тора.
+     * 
+     * \return point3d(x, y, z) Данные точки по трем координатам
+     */
+    point3d rnd() {
 
-        while (!inside)
-        {
-            x = ((double)rand() / RAND_MAX) * (R + r);
-            y = ((double)rand() / RAND_MAX) * 2.0 * (R + r) - (R + r);
-            z = ((double)rand() / RAND_MAX) * 2.0 * r - r;
+        double u = dist(gen) * M_PI - M_PI / 2;
+        double v = dist(gen) * 2 * M_PI;
 
-            double distanceFromCenter = sqrt(x * x + y * y);
-            double distanceFromTube = sqrt((distanceFromCenter - R) * (distanceFromCenter - R) + z * z);
+        double surface_x = (R + r * cos(v)) * cos(u);
+        double surface_y = (R + r * cos(v)) * sin(u);
+        double surface_z = r * sin(v);
 
-            if (distanceFromTube <= r && x >= 0)
-            {
-                inside = true;
-            }
+        double inner_radius = dist(gen) * r;
+        double sign = (dist(gen) < 0.5) ? -1.0 : 1.0;
+        double offset = sign * inner_radius;
+
+        double dx = surface_x - R * cos(u);
+        double dy = surface_y - R * sin(u);
+        double length = sqrt(dx * dx + dy * dy);
+        if (length > 1e-10) {
+            dx /= length;
+            dy /= length;
         }
+        else {
+            dx = 1.0;
+            dy = 0.0;
+        }
+
+        double x = surface_x + offset * dx;
+        double y = surface_y + offset * dy;
+        double z = surface_z;
 
         return point3d(x, y, z);
     }
-
-    double getR() const { return R; }
-    double getr() const { return r; }
 };
 
 
@@ -179,8 +204,8 @@ int main()
                 for (int i = 0; i < count; i++)
                 {
                     file << points[i].getBackX() << "  "
-                         << points[i].getBackY() << "  "
-                         << points[i].getBackZ() << endl;
+                        << points[i].getBackY() << "  "
+                        << points[i].getBackZ() << endl;
                 }
                 file.close();
                 cout << "Точки успешно сохранены в файл points.txt" << endl;
@@ -195,7 +220,5 @@ int main()
 
     // Освобождаем память
     delete[] points;
-
-    cout << "До свидания!" << endl;
     return 0;
 }
