@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <random>
+#include <mgl2/mgl.h>
 
 using namespace std;
 
@@ -81,9 +82,7 @@ public:
         double surface_y = (R + r * cos(v)) * sin(u);
         double surface_z = r * sin(v);
 
-        double inner_radius = dist(gen) * r;
-        double sign = (dist(gen) < 0.5) ? -1.0 : 1.0;
-        double offset = sign * inner_radius;
+        double distance_to_move_inwards = dist(gen) * r;
 
         double dx = surface_x - R * cos(u);
         double dy = surface_y - R * sin(u);
@@ -93,17 +92,97 @@ public:
             dy /= length;
         }
         else {
-            dx = 1.0;
-            dy = 0.0;
+            dx = cos(u);;
+            dy = sin(u);
         }
 
-        double x = surface_x + offset * dx;
-        double y = surface_y + offset * dy;
+        double x = surface_x - distance_to_move_inwards * dx;
+        double y = surface_y - distance_to_move_inwards * dy;
         double z = surface_z;
 
         return point3d(x, y, z);
     }
+
+    double getR() const { return R; }
+    double getr() const { return r; }
 };
+
+
+/**
+ * \brief Функция визуализции точек на 3D графике с помощью MathGL.
+ * 
+ * \param points Сгенерированные точки 
+ * \param count Количество сгенерированных точек
+ * \param R Большой радиус (расстояние от центра тора до центра трубки)
+ * \param r Малый радиус (радиус трубки)
+ */
+void visualizePoints(point3d* points, int count, double R, double r)
+{
+    mglGraph gr;
+
+    cout << "\nГенерация визуализации" << endl;
+
+    // Настройки графика
+    gr.SetSize(1200, 1000);
+    gr.Rotate(50, 60);
+    gr.Light(true);
+    gr.Alpha(true);
+
+    mglData xData(count);
+    mglData yData(count);
+    mglData zData(count);
+
+    // Заполняем массивы координатами
+    for (int i = 0; i < count; i++)
+    {
+        xData.a[i] = points[i].getBackX();
+        yData.a[i] = points[i].getBackY();
+        zData.a[i] = points[i].getBackZ();
+    }
+
+    // Рисуем оси координат
+    gr.SetRanges(0, R + r, -(R + r), R + r, -r, r);
+    gr.Axis();
+    gr.Label('x', "X", 0);
+    gr.Label('y', "Y", 0);
+    gr.Label('z', "Z", 0);
+    gr.Box();
+
+
+    int nu = 30;  // Количество точек по углу u
+    int nv = 20;  // Количество точек по углу v
+
+    mglData torusX(nu, nv);
+    mglData torusY(nu, nv);
+    mglData torusZ(nu, nv);
+
+    for (int i = 0; i < nu; i++)
+    {
+        double u = 2.0 * M_PI * i / (nu - 1);  // Угол от 0 до 2π
+
+        // Только правая половина: u от -π/2 до π/2
+        u = -M_PI / 2.0 + M_PI * i / (nu - 1);
+
+        for (int j = 0; j < nv; j++)
+        {
+            double v = 2.0 * M_PI * j / (nv - 1);  // Угол от 0 до 2π
+
+            // Параметрические уравнения тора
+            torusX.a[i + nu * j] = (R + r * cos(v)) * cos(u);
+            torusY.a[i + nu * j] = (R + r * cos(v)) * sin(u);
+            torusZ.a[i + nu * j] = r * sin(v);
+        }
+    }
+
+    gr.Surf(torusX, torusY, torusZ, "b8");  // Синий полупрозрачный
+    gr.Mesh(torusX, torusY, torusZ, "k");   // Черная сетка
+
+    gr.Plot(xData, yData, zData, "r. ");
+
+    gr.WriteJPEG("C:\\Users\\Viner\\Desktop\\torus_visualization.jpg");
+    cout << "Визуализация сохранена в файл: torus_visualization.jpg" << endl;
+
+}
 
 
 int main()
@@ -114,28 +193,27 @@ int main()
     point3d* points = nullptr;
     int count = 0;
 
-    cout << "=== Генератор точек в правой половине тора ===" << endl;
+    cout << "Генератор точек в правой половине тора" << endl;
     cout << "Введите количество точек для генерации: ";
     cin >> count;
 
-    // массив точек
     points = new point3d[count];
 
-    // заполнение массива случайными точками
-    cout << "Генерация " << count << " точек..." << endl;
+    cout << "Генерация " << count << " точек" << endl;
     for (int i = 0; i < count; i++)
     {
         points[i] = generator.rnd();
     }
-    cout << "Точки успешно сгенерированы!" << endl << endl;
+    cout << "Точки сгенерированы" << endl << endl;
 
     int choice;
     do
     {
-        cout << "\n=== Меню ===" << endl;
+        cout << "\nМеню" << endl;
         cout << "1. Вывести информацию о точке" << endl;
         cout << "2. Добавить новую точку вручную" << endl;
         cout << "3. Сохранить точки в файл points.txt" << endl;
+        cout << "4. Визуализировать точки (MathGL)" << endl;
         cout << "0. Выход" << endl;
         cout << "Ваш выбор: ";
         cin >> choice;
@@ -194,11 +272,11 @@ int main()
             points = newPoints;
             count++;
 
-            cout << "Точка добавлена! Теперь всего точек: " << count << endl;
+            cout << "Точка добавлена. Всего точек: " << count << endl;
         }
         else if (choice == 3)
         {
-            ofstream file("points.txt");
+            ofstream file("C:\\Users\\Viner\\Desktop\\points.txt");
             if (file.is_open())
             {
                 for (int i = 0; i < count; i++)
@@ -215,10 +293,13 @@ int main()
                 cout << "Ошибка при открытии файла!" << endl;
             }
         }
+        else if (choice == 4)
+        {
+            visualizePoints(points, count, generator.getR(), generator.getr());
+        }
 
     } while (choice != 0);
 
-    // Освобождаем память
     delete[] points;
     return 0;
 }
